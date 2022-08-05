@@ -46,6 +46,12 @@ remote func create_room(info: Dictionary) -> void:
     _add_player_to_room(room_id, sender_id, info)
     
     
+remote func join_room(room_id: int, info: Dictionary) -> void:
+    var sender_id: int = get_tree().get_rpc_sender_id()
+    
+    _add_player_to_room(room_id, sender_id, info)
+    
+    
 func _add_player_to_room(room_id: int, player_id: int, info: Dictionary) -> void:
     rooms[room_id].players[player_id] = info
     
