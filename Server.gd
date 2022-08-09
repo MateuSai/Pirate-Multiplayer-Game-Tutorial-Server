@@ -3,6 +3,7 @@ extends Node
 const SERVER_PORT: int = 5466
 
 var rooms: Dictionary = {}
+var players_room: Dictionary = {}
 
 var next_room_id: int = 0
 var empty_rooms: Array = []
@@ -52,10 +53,22 @@ remote func join_room(room_id: int, info: Dictionary) -> void:
     _add_player_to_room(room_id, sender_id, info)
     
     
-func _add_player_to_room(room_id: int, player_id: int, info: Dictionary) -> void:
-    rooms[room_id].players[player_id] = info
+func _add_player_to_room(room_id: int, id: int, info: Dictionary) -> void:
+    # Update data structures
+    rooms[room_id].players[id] = info
+    players_room[id] = room_id
     
-    rpc_id(player_id, "update_room", room_id)
+    # Send the room id to the new player
+    rpc_id(id, "update_room", room_id)
+    
+    # Notify all connected players (in the room) about it (including the new one)
+    for player_id in rooms[room_id].players:
+        rpc_id(player_id, "register_player", id, info)
+    
+    # Send the rest of the players to the new player
+    for other_player_id in rooms[room_id].players:
+        if other_player_id != id:
+            rpc_id(id, "register_player", other_player_id, rooms[room_id].players[other_player_id])
         
         
 func _player_connected(id: int) -> void:
@@ -64,3 +77,27 @@ func _player_connected(id: int) -> void:
     
 func _player_disconnected(id: int) -> void:
     print("Player with id " + str(id) + " disconnected")
+    
+    if not players_room.keys().has(id):
+        # The player was not in any room.
+        print("Player was not in any room yet")
+        return
+        
+    var room_id: int = players_room[id]
+    
+    if not rooms[room_id].players.erase(id) or not players_room.erase(id):
+        printerr("This key does not exist")
+        
+    if rooms[room_id].players.size() == 0:
+        # Close the room
+        print("Closing room " + str(room_id))
+        
+        if not rooms.erase(room_id):
+            printerr("Error removing room")
+        empty_rooms.push_back(room_id)
+    else:
+        # Notify the other players of the room
+        print("Notifying the other players in the room...")
+        
+        for player_id in rooms[room_id].players:
+            rpc_id(player_id, "remove_player", id)
