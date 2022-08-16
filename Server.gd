@@ -69,6 +69,29 @@ func _add_player_to_room(room_id: int, id: int, info: Dictionary) -> void:
     for other_player_id in rooms[room_id].players:
         if other_player_id != id:
             rpc_id(id, "register_player", other_player_id, rooms[room_id].players[other_player_id])
+            
+            
+remote func start_game() -> void:
+    var sender_id: int = get_tree().get_rpc_sender_id()
+    
+    var room: Dictionary = _get_room(sender_id)
+    
+    room.state = STARTED
+    
+    for player_id in room.players:
+        rpc_id(player_id, "pre_configure_game")
+        
+        
+remote func done_preconfiguring() -> void:
+    var sender_id: int = get_tree().get_rpc_sender_id()
+    
+    var room: Dictionary = _get_room(sender_id)
+    
+    room.players_done += 1
+    
+    if room.players_done == room.players.size():
+        for player_id in room.players:
+            rpc_id(player_id, "done_preconfiguring")
         
         
 func _player_connected(id: int) -> void:
@@ -99,5 +122,13 @@ func _player_disconnected(id: int) -> void:
         # Notify the other players of the room
         print("Notifying the other players in the room...")
         
-        for player_id in rooms[room_id].players:
-            rpc_id(player_id, "remove_player", id)
+        if rooms[room_id].creator == id:
+            for player_id in rooms[room_id].players:
+                get_tree().network_peer.disconnect_peer(player_id)
+        else:
+            for player_id in rooms[room_id].players:
+                rpc_id(player_id, "remove_player", id)
+
+
+func _get_room(player_id: int) -> Dictionary:
+    return rooms[players_room[player_id]]
