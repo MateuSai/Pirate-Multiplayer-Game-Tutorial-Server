@@ -92,6 +92,36 @@ remote func done_preconfiguring() -> void:
     if room.players_done == room.players.size():
         for player_id in room.players:
             rpc_id(player_id, "done_preconfiguring")
+            
+            
+remote func change_player_pos(new_pos: Vector2) -> void:
+    var sender_id: int = get_tree().get_rpc_sender_id()
+    
+    var room: Dictionary = _get_room(sender_id)
+    
+    for player_id in room.players:
+        if player_id != sender_id:
+            rpc_unreliable_id(player_id, "update_player_pos", sender_id, new_pos)
+            
+            
+remote func change_player_flip_h(flip_h: bool) -> void:
+    var sender_id: int = get_tree().get_rpc_sender_id()
+    
+    var room: Dictionary = _get_room(sender_id)
+    
+    for player_id in room.players:
+        if player_id != sender_id:
+            rpc_id(player_id, "update_player_flip_h", sender_id, flip_h)
+            
+            
+remote func change_player_anim(anim_name: String) -> void:
+    var sender_id: int = get_tree().get_rpc_sender_id()
+    
+    var room: Dictionary = _get_room(sender_id)
+    
+    for player_id in room.players:
+        if sender_id != player_id:
+            rpc_id(player_id, "update_player_anim", sender_id, anim_name)
         
         
 func _player_connected(id: int) -> void:
