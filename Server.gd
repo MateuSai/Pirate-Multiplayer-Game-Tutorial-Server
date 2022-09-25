@@ -2,6 +2,9 @@ extends Node
 
 const SERVER_PORT: int = 5466
 
+const ERROR_INEXISTENT_ROOM: String = "There is no room with such id"
+const ERROR_GAME_ALREADY_STARTED: String = "Game already started"
+
 var rooms: Dictionary = {}
 var players_room: Dictionary = {}
 
@@ -50,7 +53,14 @@ remote func create_room(info: Dictionary) -> void:
 remote func join_room(room_id: int, info: Dictionary) -> void:
 	var sender_id: int = get_tree().get_rpc_sender_id()
 	
-	_add_player_to_room(room_id, sender_id, info)
+	if not rooms.keys().has(room_id):
+		rpc_id(sender_id, "show_error", ERROR_INEXISTENT_ROOM)
+		get_tree().network_peer.disconnect_peer(sender_id)
+	elif rooms[room_id].state == STARTED:
+		rpc_id(sender_id, "show_error", ERROR_GAME_ALREADY_STARTED)
+		get_tree().network_peer.disconnect_peer(sender_id)
+	else:
+		_add_player_to_room(room_id, sender_id, info)
 	
 	
 func _add_player_to_room(room_id: int, id: int, info: Dictionary) -> void:
